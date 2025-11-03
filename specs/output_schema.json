@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "price": {"type": "number"},
+    "availability": {"type": "string"},
+    "image_url": {"type": "string", "format": "uri"},
+    "detail_url": {"type": "string", "format": "uri"},
+    "specs": {"type": "object"}
+  },
+  "required": ["name", "price", "availability", "detail_url"]
+}
