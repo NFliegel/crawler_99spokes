@@ -30,7 +30,7 @@ def sample_html():
 
 
 def test_parse_page(sample_html):
-    crawler = BikeCrawler(base_url="http://example.com", pagination_param="?page={page_num}")
+    crawler = BikeCrawler(base_url="http://example.com", pagination_param="?page={page_num}", use_browser=False)
     bikes = crawler.parse_page(sample_html)
     assert len(bikes) == 1
     bike = bikes[0]
@@ -59,7 +59,7 @@ def test_crawl(tmp_path, sample_html):
     with requests_mock.Mocker() as m:
         m.get('http://example.com', text=sample_html)
         crawler = BikeCrawler(base_url=manifest['base_url'], pagination_param=manifest['pagination_param'],
-                              start_page=1, end_page=1, schema=schema)
+                              start_page=1, end_page=1, schema=schema, use_browser=False)
         bikes = crawler.crawl()
         assert len(bikes) == 1
 
