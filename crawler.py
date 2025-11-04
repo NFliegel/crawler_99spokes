@@ -29,7 +29,8 @@ class BikeCrawler:
 
     def __init__(self, base_url: str, pagination_param: str, start_page: int = 1,
                  end_page: Optional[int] = None, schema: Optional[Dict[str, Any]] = None,
-                 use_browser: bool = True, browser_type: str = 'chromium', timeout: int = 15) -> None:
+                 use_browser: bool = True, browser_type: str = 'chromium', timeout: int = 15,
+                 debug_dir: Optional[str] = None) -> None:
         self.base_url = base_url.rstrip('/')
         self.pagination_param = pagination_param
         self.start_page = start_page
@@ -38,6 +39,7 @@ class BikeCrawler:
         self.use_browser = use_browser
         self.browser_type = browser_type
         self.timeout = timeout
+        self.debug_dir = debug_dir
         self._playwright = None
         self._browser = None
         self._context = None
@@ -158,6 +160,37 @@ class BikeCrawler:
                 })
         return bikes
 
+    def save_relevant_html_snippet(self, html: str, page_num: int) -> None:
+        """Persist relevant parts of the fetched HTML for debugging purposes."""
+        if not self.debug_dir:
+            return
+        os.makedirs(self.debug_dir, exist_ok=True)
+        soup = BeautifulSoup(html, 'html.parser')
+
+        sections: List[str] = []
+
+        json_ld_scripts = soup.find_all('script', type='application/ld+json')
+        if json_ld_scripts:
+            sections.append('<!-- JSON-LD data -->')
+            sections.extend(str(script) for script in json_ld_scripts)
+
+        bike_links = soup.select('a[href*="/bikes/"]')
+        if bike_links:
+            sections.append('<!-- Bike links -->')
+            sections.extend(str(link) for link in bike_links)
+
+        if not sections:
+            sections.append('<!-- Full HTML fallback -->')
+            sections.append(soup.prettify())
+
+        content = "\n\n".join(sections)
+        snapshot = f"<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"></head><body>\n{content}\n</body></html>"
+
+        filename = os.path.join(self.debug_dir, f'page_{page_num}_relevant.html')
+        with open(filename, 'w', encoding='utf-8') as file:
+            file.write(snapshot)
+        logger.info("Saved HTML snapshot for page %d to %s", page_num, filename)
+
     def is_valid(self, data: Dict[str, Any]) -> bool:
         """Validate data against schema."""
         if not self.schema:
@@ -182,6 +215,7 @@ class BikeCrawler:
                 html = self.fetch_page(url)
                 if not html:
                     break
+                self.save_relevant_html_snippet(html, page_num)
                 bikes = self.parse_page(html)
                 for bike in bikes:
                     if self.is_valid(bike):
@@ -245,6 +279,11 @@ def main() -> None:
         default=default_output,
         help='Output directory (defaults to ./output)',
     )
+    parser.add_argument(
+        '--debug-html-dir',
+        default=None,
+        help='Optional directory to store the relevant HTML snippets for debugging',
+    )
     args = parser.parse_args()
 
     if not os.path.isfile(args.manifest):
@@ -264,6 +303,7 @@ def main() -> None:
         use_browser=manifest.get('use_browser', True),
         browser_type=manifest.get('browser_type', 'chromium'),
         timeout=manifest.get('timeout', 15),
+        debug_dir=args.debug_html_dir,
     )
 
     bikes = crawler.crawl()
