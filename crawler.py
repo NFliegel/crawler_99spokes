@@ -156,11 +156,33 @@ def load_json(path: str) -> Any:
 
 def main() -> None:
     """Entry point for the crawler."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_manifest = os.path.join(script_dir, 'specs', 'manifest.json')
+    default_schema = os.path.join(script_dir, 'specs', 'output_schema.json')
+    default_output = os.path.join(script_dir, 'output')
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--manifest', required=True, help='Path to manifest.json')
-    parser.add_argument('--schema', required=True, help='Path to output_schema.json')
-    parser.add_argument('--output', required=True, help='Output directory')
+    parser.add_argument(
+        '--manifest',
+        default=default_manifest,
+        help='Path to manifest.json (defaults to specs/manifest.json)',
+    )
+    parser.add_argument(
+        '--schema',
+        default=default_schema,
+        help='Path to output_schema.json (defaults to specs/output_schema.json)',
+    )
+    parser.add_argument(
+        '--output',
+        default=default_output,
+        help='Output directory (defaults to ./output)',
+    )
     args = parser.parse_args()
+
+    if not os.path.isfile(args.manifest):
+        parser.error(f"Manifest file not found: {args.manifest}")
+    if not os.path.isfile(args.schema):
+        parser.error(f"Schema file not found: {args.schema}")
 
     manifest = load_json(args.manifest)
     schema = load_json(args.schema)
